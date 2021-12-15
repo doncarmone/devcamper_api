@@ -10,8 +10,14 @@
   "author": "Carmona",
   "license": "MIT",
   "dependencies": {
+    "body-parser": "^1.19.1",
+    "colors": "^1.4.0",
     "dotenv": "^10.0.0",
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "mongoose": "^6.1.1",
+    "morgan": "^1.10.0",
+    "node-geocoder": "^3.28.0",
+    "slugify": "^1.6.3"
   },
   "devDependencies": {
     "nodemon": "^2.0.15"
