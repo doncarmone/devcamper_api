@@ -1,4 +1,4 @@
-const Bootcamp = require('../modeles/Bootcamp');
+const Bootcamp = require('../models/Bootcamp');
 const ErrorResponse = require('../utilis/errorResponse.js');
 const asyncHandler = require('../middlerware/async');
 
