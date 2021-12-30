@@ -1,7 +1,7 @@
 const geocoder = require('../utils/geocoder');
 const Bootcamp = require('../models/Bootcamp');
 const ErrorResponse = require('../utils/errorResponse.js');
-const asyncHandler = require('../middlerware/async');
+const asyncHandler = require('../middleware/async');
 const path = require('path');
 
 //@desc  GET ALL BOOTCAMPS
@@ -34,6 +34,7 @@ exports.getBootcamp = asyncHandler(async (req, res, next) => {
 //@route POST /api/v1/bootcamps
 //@access Privates
 exports.createBootcamp = asyncHandler(async (req, res, next) => {
+  req.body.user = req.user.id;
   const bootcamp = await Bootcamp.create(req.body);
 
   res
