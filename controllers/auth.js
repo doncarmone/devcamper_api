@@ -105,6 +105,18 @@ exports.getMe = asyncHandler(async (req, res, next) => {
   successResponse(res, user, 'Holi its me');
 });
 
+// @desc      Logout user/ clear cookie
+// @route     GET /api/v1/auth/logout
+// @access    Private
+exports.logout = asyncHandler(async (req, res, next) => {
+  res.cookie('token', 'none', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+
+  successResponse(res, {}, 'Logout');
+});
+
 // @desc      Update user details
 // @route     put /api/v1/auth/updatedetails
 // @access    Private
@@ -135,7 +147,7 @@ exports.updatePassword = asyncHandler(async (req, res, next) => {
 
   user.password = req.body.newPassword;
   await user.save();
-  sendTokenResponse(user, 200, res); 
+  sendTokenResponse(user, 200, res);
 });
 
 // @desc      Get bootcamps within a radius
