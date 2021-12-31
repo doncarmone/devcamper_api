@@ -1,7 +1,9 @@
+const crypto = require('crypto');
 const User = require('../models/User');
 const ErrorResponse = require('../utils/errorResponse.js');
 const asyncHandler = require('../middleware/async');
 const successResponse = require('../middleware/successResponse.js');
+const sendEmail = require('../utils/sendEmail');
 
 //@desc  POST CREATE USER
 //@route POST /api/v1/auth/register
@@ -53,6 +55,114 @@ exports.login = asyncHandler(async (req, res, next) => {
   sendTokenResponse(user, 200, res);
 });
 
+// @desc      Get bootcamps within a radius
+// @route     GET /api/v1/auth/forgotpassword
+// @access    Public
+exports.forgotPassword = asyncHandler(async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
+
+  if (!user) {
+    return next(new ErrorResponse('There is no user with that email', 404));
+  }
+
+  //Get reset token
+  const resetToken = user.getResetPasswordToken();
+  await user.save({ validateBeforeSave: false });
+
+  //Create resetUrl
+  const resetUrl = `${req.protocol}://${req.get(
+    'host'
+  )}/api/v1/resetpassword/${resetToken}`;
+
+  const message = `Message ajmm PUT REQ \n\n ${resetUrl} `;
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: 'Password reset token',
+      message: message,
+    });
+    // successResponse(res, [], 'Email sent');
+
+    res.status(200).json({ succes: true, message: 'Email sent' });
+  } catch (error) {
+    console.error(error);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save({ validateBeforeSave: false });
+    return next(new ErrorResponse('email could not be sent', 500));
+  }
+
+  successResponse(res, user, 'Reset token');
+});
+
+// @desc      Get current logged in user
+// @route     GET /api/v1/auth/me
+// @access    Private
+exports.getMe = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
+  successResponse(res, user, 'Holi its me');
+});
+
+// @desc      Update user details
+// @route     put /api/v1/auth/updatedetails
+// @access    Private
+exports.updateDetails = asyncHandler(async (req, res, next) => {
+  const fieldsToUpdate = {
+    name: req.body.name,
+    email: req.body.email,
+  };
+
+  const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
+    new: true,
+    runValidators: true,
+  });
+
+  successResponse(res, user, 'User Updated');
+});
+
+// @desc      Update Password
+// @route     PUT /api/v1/auth/updatepassword
+// @access    Private
+exports.updatePassword = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id).select('+password');
+
+  //Check current
+  if (!(await user.matchPassword(req.body.currentPassword))) {
+    return next(new ErrorResponse('Password is incorrect', 401));
+  }
+
+  user.password = req.body.newPassword;
+  await user.save();
+  sendTokenResponse(user, 200, res); 
+});
+
+// @desc      Get bootcamps within a radius
+// @route     GET /api/v1/auth/resetpassword/:resettoken
+// @access    Public
+exports.resetPassword = asyncHandler(async (req, res, next) => {
+  //Get hashed token
+  const resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(req.params.resettoken)
+    .digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken,
+    resetPasswordExpir: { $gt: Date.now() },
+  });
+  if (!user) {
+    return next(new ErrorResponse('Invalid Token', 400));
+  }
+  //Set new password
+  user.password = req.body.password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+  sendTokenResponse(user, 200, res);
+});
+
 //Get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
   //Create Token
@@ -74,12 +184,3 @@ const sendTokenResponse = (user, statusCode, res) => {
     token,
   });
 };
-
-// @desc      Get bootcamps within a radius
-// @route     GET /api/v1/auth/me
-// @access    Private
-exports.getMe = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.user.id);
-
-  successResponse(res, user, 'ME!');
-});
